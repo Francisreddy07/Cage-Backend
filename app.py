@@ -1,34 +1,8 @@
-# from flask import Flask, request,jsonify
-# from dotenv import load_dotenv
-# from pymongo import MongoClient
-# import os
-# import Auth_router
-
-# app = Flask("__name__")
-
-# client = MongoClient(os.getenv("Mongourl"))
-# db = client["cagedb"]
-# user_collection = db["user"]
-# answers = db["useranswers"]
-
-
-# @app.route("/phq/answers", methods=["POST"])
-# def add():
-#     data = request.json
-#     record = {
-#         "total": data.get("total")
-#     }
-#     answers.insert_one(record)
-#     return jsonify({"status": "success", "saved": record})
-# if __name__ == '__main__':
-#     app.run(debug=True)
-
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
-
+from bson.objectid import ObjectId
 from Auth_router import router as auth_router
 from dbConnection import answers_collection
 
@@ -72,17 +46,26 @@ def create_app() -> Flask:
     def health() -> tuple:
         return jsonify({"status": "ok"}), 200
 
-    @app.route("/phq/answers", methods=["POST"])
+    @app.route("/test/answers", methods=["POST"])
     def add_answer() -> tuple:
-        data = request.get_json(silent=True) or {}
+        data = request.json
+
+        isTaken = answers_collection.find_one({"user_id": (data.get("userId")), "name": data.get("name")})
+        if isTaken:
+            answers_collection.update_one({"_id": ObjectId(isTaken.get("_id"))},{"$set": data})
+            return jsonify({"status": "success"}), 201
         total = data.get("total")
         if total is None:
             return jsonify({"error": "Missing 'total' in request body"}), 400
 
-        record = {"total": total}
+        record = {"total": total,"user_id": data.get("userId"), "name": data.get("name")}
         result = answers_collection.insert_one(record)
-        saved = {"_id": str(result.inserted_id), **record}
-        return jsonify({"status": "success", "saved": saved}), 201
+        return jsonify({"status": "success"}), 201
+    @app.route("/user/result/<id>" )
+    def getScores(id):
+        user_score = answers_collection.find({"user_id": id}, {"_id": 0})
+        
+        return {"user_scores": list(user_score)}
 
     return app
 

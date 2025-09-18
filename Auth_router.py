@@ -85,6 +85,7 @@ def login():
         return jsonify({"error": "email and password are required"}), 400
 
     user = user_collection.find_one({"email": email})
+    print(user)
     if not user:
         return jsonify({"error": "User not found"}), 401
 
@@ -96,6 +97,6 @@ def login():
         return jsonify({"error": "Server misconfiguration: SECRET_KEY missing"}), 500
 
     token = jwt.encode({"id": str(user.get("_id")), "email": user.get("email")}, jwt_secret, algorithm="HS256")
-    return jsonify({"message": "login successful", "token": token}), 200
+    return jsonify({"message": "login successful", "token": token, "user": str(user.get("_id"))}), 200
 
 
